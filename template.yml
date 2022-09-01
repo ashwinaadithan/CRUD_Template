@@ -1,163 +1,182 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ""
 Resources:
-  LambdaFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      Code:
-        ZipFile: |
-          console.log('Lambda function');
-          var AWS = require('aws-sdk');
-          var dynamo = new AWS.DynamoDB.DocumentClient();
-          exports.handler = function(event, context, callback) {
-          //console.log('Received event:', JSON.stringify(event, null, 2));
-          var operation = event.operation;
-          if (event.tableName) {
-            event.payload.TableName = event.tableName;
-          }
-          switch (operation) {
-                case 'create':
-                    dynamo.put(event.payload, callback);
-                    break;
-                case 'read':
-                    dynamo.get(event.payload, callback);
-                    break;
-                case 'update':
-                    dynamo.update(event.payload, callback);
-                    break;
-                case 'delete':
-                    dynamo.delete(event.payload, callback);
-                    break;
-                case 'list':
-                    dynamo.scan(event.payload, callback);
-                    break;
-                default:
-                    callback('Unknown operation: ${operation}');
-          }
-          };
-      FunctionName:
-        Ref: LambdaFuncName
-      Handler: index.handler
-      Runtime: nodejs12.x
-      Role: !GetAtt IAMRole.Arn
-    DependsOn:
-      - DynamoDBTable
-  DynamoDBTable:
-    Type: 'AWS::DynamoDB::Table'
-    Properties:
-      TableName:
-        Ref: DynamoDBTableName
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: '5'
-        WriteCapacityUnits: '5'
-    DependsOn:
-      - IAMRole
-  APIGatewayRestAPI:
-    Type: 'AWS::ApiGateway::RestApi'
-    Properties:
-      Name:
-        Ref: APIName
-    DependsOn:
-      - LambdaFunction
-  APIGatewayResource:
-    Type: 'AWS::ApiGateway::Resource'
-    Properties:
-      RestApiId: !Ref APIGatewayRestAPI
-      ParentId: !GetAtt
-        - APIGatewayRestAPI
-        - RootResourceId
-      PathPart:
-        Ref: LambdaFuncName
-    DependsOn:
-      - APIGatewayRestAPI
-  APIGatewayMethod:
-    Type: 'AWS::ApiGateway::Method'
-    Properties:
-      RestApiId: !Ref APIGatewayRestAPI
-      ResourceId: !Ref APIGatewayResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      MethodResponses:
-        - StatusCode: 200
-      Integration:
-        Type: AWS
-        IntegrationResponses:
-          - StatusCode: 200
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - >-
-            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFuncNameArn}/invocations
-          - LambdaFuncNameArn: !GetAtt LambdaFunction.Arn
-    DependsOn:
-      - APIGatewayResource
-  APIGatewayDeployment:
-    Type: 'AWS::ApiGateway::Deployment'
-    Properties:
-      RestApiId: !Ref APIGatewayRestAPI
-      StageName:
-        Ref: EnvironmentName
-    DependsOn:
-      - APIGatewayMethod
-  APIGatewayPermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt LambdaFunction.Arn
-      Principal: apigateway.amazonaws.com
-    DependsOn:
-      - APIGatewayDeployment
-  IAMRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      Policies:
-        - PolicyName: Policy_api-lambda-db
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'dynamodb:BatchGetItem'
-                  - 'dynamodb:BatchWriteItem'
-                  - 'dynamodb:TagResource'
-                  - 'dynamodb:UntagResource'
-                  - 'dynamodb:PutItem'
-                  - 'dynamodb:DeleteItem'
-                  - 'dynamodb:GetItem'
-                  - 'dynamodb:Scan'
-                  - 'dynamodb:Query'
-                  - 'dynamodb:UpdateItem'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'logs:CreateLogStream'
-                  - 'logs:CreateLogGroup'
-                  - 'logs:PutLogEvents'
-                Resource: '*'
-Parameters:
-  LambdaFuncName:
-    Type: String
-    Default: Lambda_api-lambda-db
-  DynamoDBTableName:
-    Type: String
-    Default: Dynamo_api-lambda-db
-  APIName:
-    Type: String
-    Default: API_api-lambda-db
-  EnvironmentName:
-    Type: String
-    Default: Prod
+    LambdaFunction:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: ""
+            FunctionName: "get-function"
+            Handler: "index.handler"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: "awslambda-ap-s-1-tasks"
+                S3Key: !Sub "/snapshots/${AWS::AccountId}/get-function-3a9e16a2-ebc2-4e94-85d7-f3fbbd9a6bb3"
+                S3ObjectVersion: "C0foZLaLKU0JQlqY4JY239haBHSPbrn1"
+            MemorySize: 128
+            Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/get-function-role"
+            Runtime: "nodejs16.x"
+            Timeout: 3
+            TracingConfig: 
+                Mode: "PassThrough"
+            EphemeralStorage: 
+                Size: 512
+
+    LambdaFunction2:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: ""
+            FunctionName: "delete-function"
+            Handler: "index.handler"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: "awslambda-ap-s-1-tasks"
+                S3Key: !Sub "/snapshots/${AWS::AccountId}/delete-function-b5745eac-8448-47dc-9a7e-8d59f3251924"
+                S3ObjectVersion: "ed3cjfy_KjOb41LLxbmCFHzSTx048Em4"
+            MemorySize: 128
+            Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/delete-function-role"
+            Runtime: "nodejs16.x"
+            Timeout: 3
+            TracingConfig: 
+                Mode: "PassThrough"
+            EphemeralStorage: 
+                Size: 512
+
+    LambdaFunction3:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: ""
+            FunctionName: "put-function"
+            Handler: "index.handler"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: "awslambda-ap-s-1-tasks"
+                S3Key: !Sub "/snapshots/${AWS::AccountId}/put-function-bcae20c2-9ff5-4eca-99c6-2766f9b61810"
+                S3ObjectVersion: "GhyRyvlChN5qzbVJOW1F2WSGkzUOFVtu"
+            MemorySize: 128
+            Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/put-function-role"
+            Runtime: "nodejs16.x"
+            Timeout: 3
+            TracingConfig: 
+                Mode: "PassThrough"
+            EphemeralStorage: 
+                Size: 512
+
+    DynamoDBTable:
+        Type: "AWS::DynamoDB::Table"
+        Properties:
+            AttributeDefinitions: 
+              - 
+                AttributeName: "id"
+                AttributeType: "S"
+            TableName: "http-crud-api"
+            KeySchema: 
+              - 
+                AttributeName: "id"
+                KeyType: "HASH"
+            ProvisionedThroughput: 
+                ReadCapacityUnits: 1
+                WriteCapacityUnits: 1
+
+    ApiGatewayV2Api:
+        Type: "AWS::ApiGatewayV2::Api"
+        Properties:
+            ApiKeySelectionExpression: "$request.header.x-api-key"
+            ProtocolType: "HTTP"
+            RouteSelectionExpression: "$request.method $request.path"
+            DisableExecuteApiEndpoint: false
+
+    ApiGatewayV2Stage:
+        Type: "AWS::ApiGatewayV2::Stage"
+        Properties:
+            StageName: "$default"
+            StageVariables: {}
+            ApiId: !Ref ApiGatewayV2Api
+            DeploymentId: "wq8is3"
+            RouteSettings: {}
+            DefaultRouteSettings: 
+                DetailedMetricsEnabled: false
+            AutoDeploy: true
+
+    ApiGatewayV2Route:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "NONE"
+            RouteKey: "GET /items"
+            Target: !Sub "integrations/${ApiGatewayV2Integration2}"
+
+    ApiGatewayV2Route2:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "NONE"
+            RouteKey: "DELETE /items/{id}"
+            Target: !Sub "integrations/${ApiGatewayV2Integration}"
+
+    ApiGatewayV2Route3:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "NONE"
+            RouteKey: "PUT /items"
+            Target: !Sub "integrations/${ApiGatewayV2Integration3}"
+
+    ApiGatewayV2Route4:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "NONE"
+            RouteKey: "GET /items/{id}"
+            Target: !Sub "integrations/${ApiGatewayV2Integration4}"
+
+    ApiGatewayV2Integration:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt LambdaFunction2.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2Integration2:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt LambdaFunction.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2Integration3:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt LambdaFunction3.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2Integration4:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt LambdaFunction.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
